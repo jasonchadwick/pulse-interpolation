@@ -16,16 +16,17 @@ def simulate_many(qctrl, values, targets, vals_to_sigs, infid_func):
     graph_sim = qctrl.create_graph()
     
     node_names = []
+    sig_list = []
     for i in range(values.shape[0]):
         signals,_ = vals_to_sigs(graph_sim, values[i], optimizable=False)
 
         # change signal names to avoid conflicts
         for sig in signals:
             sig.name += f'_{i}'
-
         infidelity = infid_func(graph_sim, targets[i], signals)
         infidelity.name = f'infidelity_{i}'
         node_names.append(infidelity.name)
+        sig_list.append(signals)
 
     # Run simulation.
     sim_result = qctrl.functions.calculate_graph(
@@ -37,4 +38,4 @@ def simulate_many(qctrl, values, targets, vals_to_sigs, infid_func):
         infids.append(sim_result.output[name]['value'])
         print(name + f": \t{(sim_result.output[name]['value']):.3e}")
 
-    return sim_result, infids
+    return sim_result, infids, sig_list

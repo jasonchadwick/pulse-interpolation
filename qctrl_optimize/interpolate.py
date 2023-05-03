@@ -108,10 +108,12 @@ class Interpolater:
 
             optimization_result, drive_results, opt_var_results, n_iter = opt.optimize(self.qctrl, target, self.values_to_sigs, self.infid_func, self.tik0, init_guess=init_guess, seed=self.seed, max_iter=max_iter)
             n_iters.append(n_iter)
-            pulse_values = opt.pulse_values(opt_var_results)
+            pulse_values = np.array([o['value'] for o in opt_var_results.values()])#opt.pulse_values(opt_var_results)
+            if i == 0:
+                print(1, pulse_values)
             if all_opt_var_results is None:
                 all_opt_var_results = np.zeros((train_points.shape[0], pulse_values.shape[0], pulse_values.shape[1]))
-            all_opt_var_results[i,:,:] = opt.pulse_values(opt_var_results)
+            all_opt_var_results[i,:,:] = pulse_values
 
         return all_opt_var_results, n_iters
 
@@ -187,9 +189,9 @@ class Interpolater:
 
                 # the target operation to compare against
                 target = self.target_func(*point)
-
+                if i == 0:
+                    print(1.1, result)
                 pulses.append(result)
                 target_list.append(target)
-
-        sim_results, infids = sim.simulate_many(self.qctrl, np.array(pulses), target_list, self.values_to_sigs, self.infid_func)
-        return infids, simplices
+        sim_results, infids, sig_list = sim.simulate_many(self.qctrl, np.array(pulses), target_list, self.values_to_sigs, self.infid_func)
+        return infids, simplices, sim_results, sig_list

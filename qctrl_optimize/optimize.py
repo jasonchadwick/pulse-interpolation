@@ -31,18 +31,22 @@ def get_vals_to_sigs_pwc(duration, var_shape, amplitude=1):
     def values_to_sigs_pwc(graph, values, optimizable=True):
         """converts an (n x m) array of values to n signals of m pwc values each"""
         sigs = []
+        vars = []
 
         if values is None:
             assert(optimizable and var_shape is not None)
+            vars = [graph.optimization_variable(
+                    var_shape[1], 
+                    lower_bound=-1, 
+                    upper_bound=1, 
+                    initial_values=None, 
+                    name=f'ctrl_{i}_var'
+                ) 
+                for i in range(var_shape[0])
+            ]
             sigs = [
                 graph.pwc_signal(
-                    values=amplitude*graph.optimization_variable(
-                        var_shape[1], 
-                        lower_bound=-1, 
-                        upper_bound=1, 
-                        initial_values=None, 
-                        name=f'ctrl_{i}_var'
-                    ),
+                    values=amplitude*vars[i],
                     duration=duration,
                     name=f'ctrl_{i}'
                 )
@@ -51,15 +55,16 @@ def get_vals_to_sigs_pwc(duration, var_shape, amplitude=1):
         else:
             for i,vals in enumerate(values):
                 if optimizable:
-                    vars = graph.optimization_variable(
+                    var = graph.optimization_variable(
                         len(vals), 
                         lower_bound=-1, 
                         upper_bound=1, 
                         initial_values=vals, 
                         name=f'ctrl_{i}_var'
                     )
+                    vars.append(var)
                     sigs.append(graph.pwc_signal(
-                        values=amplitude*vars,
+                        values=amplitude*var,
                         duration=duration,
                         name=f'ctrl_{i}'
                     ))
@@ -69,7 +74,8 @@ def get_vals_to_sigs_pwc(duration, var_shape, amplitude=1):
                         duration=duration,
                         name=f'ctrl_{i}'
                     ))
-        return sigs,sigs
+                    vars.append(vals)
+        return sigs,vars
     return values_to_sigs_pwc
 
 def optimize(qctrl, target, values_to_sigs, infid_func, tik0=0, init_guess=None, seed=None, max_iter=200):
@@ -96,9 +102,9 @@ def optimize(qctrl, target, values_to_sigs, infid_func, tik0=0, init_guess=None,
     infidelity = infid_func(graph, target, signals)
 
     if init_guess is None:
-        tik_vals = [v.values for v in vars]
+        tik_vals = vars
     else:
-        tik_vals = [vars[i].values - init_guess[i,:] for i,v in enumerate(vars)]
+        tik_vals = [vars[i] - init_guess[i,:] for i,v in enumerate(vars)]
 
     tikhonov = tik0 * graph.sum([graph.abs(v)**2 for v in tik_vals]) / len(tik_vals)
     tikhonov.name = 'tikhonov'

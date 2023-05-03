@@ -3,7 +3,7 @@ import matplotlib
 import numpy as np
 from qctrl_optimize import interpolate
 
-def plot_interpolation(test_points, cs, ref_points, simplices, savepath=None, title=None, draw_simplices=True, aspect=(1,1,1), hist_ylim=None):
+def plot_interpolation(test_points, cs, ref_points, simplices, savepath=None, title=None, draw_simplices=True, aspect=(1,1,1), hist_ylim=None, min_v=None):
     """
     Plot a 3D space with a point for each test point, colored by infidelity.
     """
@@ -15,7 +15,11 @@ def plot_interpolation(test_points, cs, ref_points, simplices, savepath=None, ti
     ys = test_points[:,1]
     zs = test_points[:,2]
 
-    colors = ax0.scatter(xs, ys, zs, c=cs, alpha=0.5, norm=matplotlib.colors.LogNorm(1e-5,1))
+    if min_v is None:
+        min_v = np.floor(np.log10(np.min(cs)))
+        print(min_v)
+
+    colors = ax0.scatter(xs, ys, zs, c=cs, alpha=0.5, norm=matplotlib.colors.LogNorm(10**min_v,1), cmap='viridis')
     ax0.set_box_aspect(aspect)
     ax0.view_init(elev=30, azim=-70)
     cbar = plt.colorbar(colors, label='Infidelity')
@@ -36,20 +40,18 @@ def plot_interpolation(test_points, cs, ref_points, simplices, savepath=None, ti
     if savepath is not None:
         plt.savefig(savepath + 'points.svg')
         plt.savefig(savepath + 'points.pdf')
+        plt.savefig(savepath + 'points.png')
     plt.show()
 
     cm = plt.cm.get_cmap("viridis")
-    ax = plt.gca()
-    _, bins, patches = ax.hist(cs, bins=10**np.arange(-5,1,0.2))
+    fig,ax = plt.subplots(figsize=(6,4))
+    _, bins, patches = ax.hist(cs, bins=10**np.arange(min_v,0.2,0.2))
     bin_centers = 0.5*(bins[:-1]+bins[1:])
-    norm = matplotlib.colors.LogNorm(1e-5,1)
+    norm = matplotlib.colors.LogNorm(10**min_v,1)
     for c, p in zip(bin_centers, patches):
         plt.setp(p, "facecolor", cm(norm(c)))
     plt.xscale('log')
     plt.ylim(hist_ylim)
-    plt.title('Distribution of test points')
-    plt.ylabel('Number of points')
-    plt.xlabel('Infidelity')
     plt.tight_layout()
     if savepath is not None:
         plt.savefig(savepath + 'hist.svg')
